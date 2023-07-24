@@ -28,9 +28,9 @@ from tf2_geometry_msgs import do_transform_pose
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import PointCloud2, PointField
 
-class PCDListener(Node):
+class Color_Pose_Estimation(Node):
     def __init__(self):
-        super().__init__('pcd_subscriber_node')
+        super().__init__('color_pose_estimation_unique_node')
         self.br = CvBridge()
         self.center = [0.0,0.0,0.0]
         self.tfBuffer = tf2_ros.Buffer(cache_time=rclpy.duration.Duration(seconds=1))
@@ -46,6 +46,8 @@ class PCDListener(Node):
         #self.publisher = self.create_publisher(tf2_geometry_msgs.PoseStamped, "/pose_topic", 10)
         self.publisher_ = self.create_publisher(color_pose_msgs.msg.ColorPose, '/color_pose_estimation/color_pose', 10)
         self.publisher_open3d = self.create_publisher(PointCloud2, 'o3d_result', 10)
+        self.publisher_color_image = self.create_publisher(
+            sensor_msgs.Image, 'color_pose_estimation/color_image', 10)
 
     def color_estimation_callback(self, image, depth, camera_info):
         ######Image Processing#########
@@ -100,7 +102,9 @@ class PCDListener(Node):
 
         # color detection node returns the bounding box of the found object in 
         # the bounding box format (x,y,w,h)
-        rect = cdet.detect(self.current_frame)
+        img, rect = cdet.detect(self.current_frame)
+        image_message = self.br.cv2_to_imgmsg(img, encoding="passthrough")
+        self.publisher_color_image.publish(image_message)
         if (rect[2]<10 or rect[3]<10): 
             return
         
@@ -257,9 +261,9 @@ class PCDListener(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    pcd_listener = PCDListener()
-    rclpy.spin(pcd_listener)
-    pcd_listener.destroy_node()
+    cpe = Color_Pose_Estimation()
+    rclpy.spin(cpe)
+    cpe.destroy_node()
     rclpy.shutdown()
 
 

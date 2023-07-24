@@ -40,8 +40,8 @@ def detect(img):
     x, y, w, h = l_rect
 
     cv2.rectangle(img, (x,y),(x+w, y+h), (255,0,0), 2)
-    cv2.imshow("mask", img)
+    #cv2.imshow("mask", img)
 
-    key = cv2.waitKey(1)
+    #key = cv2.waitKey(1)
 
-    return l_rect
+    return img, l_rect
