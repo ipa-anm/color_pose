@@ -9,14 +9,21 @@ YELLOW_HIGH = np.array([35, 255, 255])
 BLUE_LOW = np.array([100, 70, 80])
 BLUE_HIGH = np.array([130, 255, 255])
 
-RED_LOW = np.array([135, 50, 80])
-RED_HIGH = np.array([180, 255, 255])
+RED1_LOW = np.array([0, 120, 70])
+RED1_HIGH = np.array([10, 255, 255])
+
+RED2_LOW = np.array([160, 120, 80])
+RED2_HIGH = np.array([180, 255, 255])
 
 GREEN_LOW = np.array([40, 30, 110])
 GREEN_HIGH = np.array([80, 255, 255])
 
-COLOR_RANGES = (YELLOW_LOW, YELLOW_HIGH, BLUE_LOW, BLUE_HIGH, RED_LOW, RED_HIGH, GREEN_LOW, GREEN_HIGH)
-COLOR_NAMES = ("Yellow", "Blue", "Red", "Green")
+# COLOR_RANGES = (YELLOW_LOW, YELLOW_HIGH, BLUE_LOW, BLUE_HIGH, RED_LOW, RED_HIGH, GREEN_LOW, GREEN_HIGH)
+# COLOR_NAMES = ("Yellow", "Blue", "Red", "Green")
+
+COLOR_RANGES = {"Yellow": (YELLOW_LOW, YELLOW_HIGH), 
+                "Blue": (BLUE_LOW, BLUE_HIGH),
+                "Green": (GREEN_LOW, GREEN_HIGH)}
 
     
 # define the color range that will be detected in the image 
@@ -60,18 +67,20 @@ def filter_largest_rectangles(cnts):
 # detect rectangular color ranges in the image  
 def detect(img):
     color_array = [];
-    for i in range (0, int(len(COLOR_RANGES)/2), 2):
-        masked_img = define_color_range(COLOR_RANGES[i], COLOR_RANGES[i+1], img)
-        contours = find_contours(masked_img)
+    
+    red_mask1 = define_color_range(RED1_LOW, RED1_HIGH, img)
+    red_mask2 = define_color_range(RED2_LOW, RED2_HIGH, img)
+    red_mask = cv2.bitwise_or(red_mask1, red_mask2)
+    color_masks = {color: define_color_range(low, high, img) for color, (low, high) in COLOR_RANGES.items()}
+    color_masks["Red"] = red_mask
+    for color, mask in color_masks.items():
+        contours = find_contours(mask)
         second_largest_rectangle, largest_rectangle = filter_largest_rectangles(contours)
         cv2.rectangle(img, (second_largest_rectangle[0], second_largest_rectangle[1]), (second_largest_rectangle[0]+second_largest_rectangle[2], second_largest_rectangle[1]+second_largest_rectangle[3]), (255,0,0), 2)
         cv2.rectangle(img, (largest_rectangle[0], largest_rectangle[1]), (largest_rectangle[0]+largest_rectangle[2], largest_rectangle[1]+largest_rectangle[3]), (255,0,0), 2)
-        cv2.putText(img, COLOR_NAMES[int(i/2)], (largest_rectangle[0], largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-        cv2.putText(img, COLOR_NAMES[int(i/2)], (second_largest_rectangle[0], second_largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+        cv2.putText(img, f'{color}_holder', (largest_rectangle[0], largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+        cv2.putText(img, color, (second_largest_rectangle[0], second_largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
         color_array.append(second_largest_rectangle)    
-        color_array.append(largest_rectangle)    
-
-        #cv2.imshow("Masks", img)
-        #key = cv2.waitKey(1)
+        color_array.append(largest_rectangle)  
 
     return color_array, img
