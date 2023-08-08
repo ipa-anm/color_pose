@@ -23,7 +23,7 @@ GREEN_HIGH = np.array([80, 255, 255])
 
 COLOR_RANGES = {
     "Yellow": (np.array([15, 60, 100]), np.array([35, 255, 255])),
-    "Blue": (np.array([110, 60, 70]), np.array([130, 255, 255])),
+    "Blue": (np.array([110, 60, 60]), np.array([130, 255, 255])),
     "Green": (np.array([40, 60, 120]), np.array([80, 255, 255])),
 }
     
