@@ -26,7 +26,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'color_pose_estimation = color_pose_estimation.color_pose_estimation:main',
+            'color_pose_estimation = color_pose_estimation.color_pose_estimation_scenario:main',
             'color_pose_estimation_unique = color_pose_estimation.color_pose_estimation_unique:main',
         ],
     },

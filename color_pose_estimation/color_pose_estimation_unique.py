@@ -28,6 +28,9 @@ from tf2_geometry_msgs import do_transform_pose
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import PointCloud2, PointField
 
+# Select Color between Blue, Red, Yellow or Green
+COLOR = "Blue"
+
 class Color_Pose_Estimation(Node):
     def __init__(self):
         super().__init__('color_pose_estimation_unique_node')
@@ -102,7 +105,7 @@ class Color_Pose_Estimation(Node):
 
         # color detection node returns the bounding box of the found object in 
         # the bounding box format (x,y,w,h)
-        img, rect = cdet.detect(self.current_frame)
+        img, rect = cdet.detect(self.current_frame, COLOR)
         image_message = self.br.cv2_to_imgmsg(img, encoding="passthrough")
         self.publisher_color_image.publish(image_message)
         if (rect[2]<10 or rect[3]<10): 
