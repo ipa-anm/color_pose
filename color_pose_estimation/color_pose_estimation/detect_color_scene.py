@@ -34,7 +34,7 @@ def define_color_range(low, high, img):
     low = low
     high = high
     mask = cv2.inRange(hsv_frame, low, high)
-    color = cv2.bitwise_and(img, img, mask=mask)
+    # color = cv2.bitwise_and(img, img, mask=mask)
     masked_img= mask.astype(np.uint8)
     return masked_img
 
@@ -67,7 +67,7 @@ def filter_largest_rectangles(cnts):
     
 # detect rectangular color ranges in the image  
 def detect(img):
-    color_array = [];
+    color_array = {}
     red_mask1 = define_color_range(RED1_LOW, RED1_HIGH, img)
     red_mask2 = define_color_range(RED2_LOW, RED2_HIGH, img)
     red_mask = cv2.bitwise_or(red_mask1, red_mask2)
@@ -80,7 +80,6 @@ def detect(img):
         cv2.rectangle(img, (largest_rectangle[0], largest_rectangle[1]), (largest_rectangle[0]+largest_rectangle[2], largest_rectangle[1]+largest_rectangle[3]), (255,0,0), 2)
         cv2.putText(img, f'{color}_holder', (largest_rectangle[0], largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
         cv2.putText(img, color, (second_largest_rectangle[0], second_largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-        color_array.append(second_largest_rectangle)    
-        color_array.append(largest_rectangle)  
+        color_array[color] = (second_largest_rectangle, largest_rectangle)
 
     return color_array, img

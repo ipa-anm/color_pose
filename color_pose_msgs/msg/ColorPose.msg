@@ -1,3 +1,3 @@
 std_msgs/Header header
-uint32 color
+string color
 geometry_msgs/Pose pose
