@@ -188,7 +188,7 @@ class Color_Pose_Estimation(Node):
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "camera_depth_optical_frame"
         t.child_frame_id = str(color)
-        t.transform.translation.x = center[0]
+        t.transform.translation.x = center[0]-0.0148 # https://github.com/IntelRealSense/realsense-ros#---extrinsics-from-sensor-a-to-sensor-b
         t.transform.translation.y = center[1]
         t.transform.translation.z = center[2]
         t.transform.rotation.w = 1.0
