@@ -17,7 +17,8 @@ import open3d as o3d
 from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import Point, Pose, TransformStamped, PoseStamped
 import tf2_ros
-from tf2_ros import TransformException, TransformBroadcaster, TransformBroadcaster, TransformListener
+from tf2_ros import TransformException, TransformBroadcaster, TransformListener
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 import tf2_geometry_msgs
 import image_geometry
 import ctypes
@@ -46,7 +47,7 @@ class Color_Pose_Estimation(Node):
             cache_time=rclpy.duration.Duration(seconds=1))
         self.listener = tf2_ros.TransformListener(
             self.tfBuffer, self, spin_thread=True)
-        self.tf_broadcaster = TransformBroadcaster(self)
+        self.tf_static_broadcaster = StaticTransformBroadcaster(self)
         self.image_sub = Subscriber(
             self, sensor_msgs.Image, "/camera/color/image_raw", qos_profile=qos_profile_sensor_data)
         self.aligned_depth_sub = Subscriber(
@@ -183,32 +184,29 @@ class Color_Pose_Estimation(Node):
         except Exception as e:
             self.get_logger().error("Exception occurred: {0}".format(e))
 
-        # Create a pose stamped message in "frame1"
-        pose = PoseStamped()
-        print("color_pose generated")
-        pose.header.frame_id = "camera_depth_optical_frame"
-        pose.pose.position.x = center[0]-0.015
-        pose.pose.position.y = center[1]
-        pose.pose.position.z = center[2]
-        pose.pose.orientation.w = 1.0
+        t = TransformStamped()
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id = "camera_depth_optical_frame"
+        t.child_frame_id = str(color)
+        t.transform.translation.x = center[0]
+        t.transform.translation.y = center[1]
+        t.transform.translation.z = center[2]
+        t.transform.rotation.w = 1.0
+
+        self.tf_static_broadcaster.sendTransform(t)
 
         transformed_pose = None
         try:
-            # Transform the pose to "frame2"
-            transformed_pose = self.tfBuffer.transform(
-                pose, "world", timeout=rclpy.time.Duration(seconds=1))
+            transformed_pose = self.tfBuffer.lookup_transform(str(color), "world", rclpy.time.Time(), timeout=rclpy.time.Duration(seconds=1))
         except Exception as e:
             self.get_logger().error("Exception occurred: {0}".format(e))
             return
 
         color_pose = color_pose_msgs.msg.ColorPose()
         color_pose.header.frame_id = transformed_pose.header.frame_id
-        color_pose.pose.position.x = transformed_pose.pose.position.x
-        color_pose.pose.position.y = transformed_pose.pose.position.y
-        color_pose.pose.position.z = transformed_pose.pose.position.z
-        color_pose.pose.orientation.x = 0.0
-        color_pose.pose.orientation.y = 0.0
-        color_pose.pose.orientation.z = 0.0
+        color_pose.pose.position.x = transformed_pose.transform.translation.x
+        color_pose.pose.position.y = transformed_pose.transform.translation.y
+        color_pose.pose.position.z = transformed_pose.transform.translation.z
         color_pose.pose.orientation.w = 1.0
         color_pose.color = str(color)
 
