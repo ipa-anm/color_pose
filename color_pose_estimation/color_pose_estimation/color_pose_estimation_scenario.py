@@ -49,11 +49,11 @@ class Color_Pose_Estimation(Node):
             self.tfBuffer, self, spin_thread=True)
         self.tf_static_broadcaster = StaticTransformBroadcaster(self)
         self.image_sub = Subscriber(
-            self, sensor_msgs.Image, "/camera/color/image_raw", qos_profile=qos_profile_sensor_data)
+            self, sensor_msgs.Image, "/camera/camera/color/image_raw", qos_profile=qos_profile_sensor_data)
         self.aligned_depth_sub = Subscriber(
-            self, sensor_msgs.Image, "/camera/aligned_depth_to_color/image_raw", qos_profile=qos_profile_sensor_data)
+            self, sensor_msgs.Image, "/camera/camera/aligned_depth_to_color/image_raw", qos_profile=qos_profile_sensor_data)
         self.camera_info_sub = Subscriber(
-            self, sensor_msgs.CameraInfo, "/camera/aligned_depth_to_color/camera_info")
+            self, sensor_msgs.CameraInfo, "/camera/camera/aligned_depth_to_color/camera_info")
         self.ts = ApproximateTimeSynchronizer(
             [self.image_sub, self.aligned_depth_sub, self.camera_info_sub], 10, 0.1,)
         self.camera_frame = "camera_depth_optical_frame"
@@ -69,7 +69,7 @@ class Color_Pose_Estimation(Node):
 
     def color_estimation_callback(self, image, depth, camera_info):
         ###### Image Processing#########
-
+        self.get_logger().info('Received an image')
         # CV2 bridge for RGB image in CV2 format
         self.current_frame = self.br.imgmsg_to_cv2(
             image, desired_encoding="bgr8")
@@ -188,7 +188,7 @@ class Color_Pose_Estimation(Node):
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "camera_depth_optical_frame"
         t.child_frame_id = str(color)
-        t.transform.translation.x = center[0]-0.0148 # https://github.com/IntelRealSense/realsense-ros#---extrinsics-from-sensor-a-to-sensor-b
+        t.transform.translation.x = center[0] -0.0148 # https://github.com/IntelRealSense/realsense-ros#---extrinsics-from-sensor-a-to-sensor-b
         t.transform.translation.y = center[1]
         t.transform.translation.z = center[2]
         t.transform.rotation.w = 1.0
@@ -209,6 +209,8 @@ class Color_Pose_Estimation(Node):
         color_pose.pose.position.z = transformed_pose.transform.translation.z
         color_pose.pose.orientation.w = 1.0
         color_pose.color = str(color)
+
+        self.get_logger().info('Publishing a color pose with pose: {0}'.format(color_pose.pose))
 
         # Publish the transformed pose
         self.publisher_color_pose.publish(color_pose)

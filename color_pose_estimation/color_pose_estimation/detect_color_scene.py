@@ -46,7 +46,7 @@ def find_contours(masked_img):
     return cnts
 
 # filter largest and second largest rectangle from the image with specified color
-def filter_largest_rectangles(cnts):
+def filter_largest_rectangles(cnts, min_area=0, max_area=float('inf')):
     sum_width_height_second_largest = 0
     sum_width_height_largest = 0
     second_largest_rectangle = 0, 0, 0, 0
@@ -54,13 +54,16 @@ def filter_largest_rectangles(cnts):
     for contour in cnts:
         rect = cv2.boundingRect(contour)
         x, y, w, h = rect
-        if w*h > sum_width_height_largest:
-            sum_width_height_largest = w*h
+        area = w*h
+        if area < min_area or area > max_area:
+            continue
+        if area > sum_width_height_largest:
+            sum_width_height_largest = area
             second_largest_rectangle = largest_rectangle
             largest_rectangle = rect
             continue
-        if w*h > sum_width_height_second_largest: 
-           sum_width_height_second_largest =w*h
+        if area > sum_width_height_second_largest: 
+           sum_width_height_second_largest = area
            second_largest_rectangle = rect
     return second_largest_rectangle, largest_rectangle
     
@@ -75,7 +78,7 @@ def detect(img):
     color_masks["Red"] = red_mask
     for color, mask in color_masks.items():
         contours = find_contours(mask)
-        second_largest_rectangle, largest_rectangle = filter_largest_rectangles(contours)
+        second_largest_rectangle, largest_rectangle = filter_largest_rectangles(contours, 1000, 20000)
         cv2.rectangle(img, (second_largest_rectangle[0], second_largest_rectangle[1]), (second_largest_rectangle[0]+second_largest_rectangle[2], second_largest_rectangle[1]+second_largest_rectangle[3]), (255,0,0), 2)
         cv2.rectangle(img, (largest_rectangle[0], largest_rectangle[1]), (largest_rectangle[0]+largest_rectangle[2], largest_rectangle[1]+largest_rectangle[3]), (255,0,0), 2)
         cv2.putText(img, f'{color}_holder', (largest_rectangle[0], largest_rectangle[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
