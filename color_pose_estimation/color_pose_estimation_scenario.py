@@ -30,14 +30,11 @@ from rclpy.executors import MultiThreadedExecutor
 
 
 # COLORTYPES
-
-GREEN = 1
-BLUE = 2
-RED = 3
-YELLOW = 4
+COLOR_NAMES = ("yellow", "blue", "red", "green")
 
 
-class Color_Pose_Estimation(Node):
+
+class ColorPoseEstimation(Node):
     def __init__(self):
         super().__init__('color_estimation_node')
         self.br = CvBridge()
@@ -66,16 +63,33 @@ class Color_Pose_Estimation(Node):
         self.publisher_color_pose_array = self.create_publisher(
             color_pose_msgs.msg.ColorPoseArray, '/color_pose_estimation/color_pose_array', 10)
 
+
+    def adjust_gamma(self, image, gamma=1.0):
+
+        invGamma = 1.0 / gamma
+        table = np.array([((i / 255.0) ** invGamma) * 255
+            for i in np.arange(0, 256)]).astype("uint8")
+
+        return cv2.LUT(image, table)
+    
     def color_estimation_callback(self, image, depth, camera_info):
         ###### Image Processing#########
 
         # CV2 bridge for RGB image in CV2 format
         self.current_frame = self.br.imgmsg_to_cv2(
             image, desired_encoding="bgr8")
+        alpha = 1 # Contrast control (1.0-3.0)
+        
+        beta = -50 # Brightness control (0-100)
+
+        self.current_frame = self.adjust_gamma(self.current_frame, 0.3)
+
+
+
         #print(self.current_frame.shape)
 
-        # cv2.imshow("image", self.current_frame)
-        # key = cv2.waitKey(1)
+        #cv2.imshow("image", self.current_frame)
+        #key = cv2.waitKey(1)
 
        # CV2 bridge for depth image in CV2 format
         depth_image = self.br.imgmsg_to_cv2(depth, "passthrough")
@@ -126,68 +140,73 @@ class Color_Pose_Estimation(Node):
         self.color_array.header.frame_id = "world"
         # if (rect[2]<10 or rect[3]<10):
         #    return
-        for rect in rect_array:
-            # center of pointcloud from edges of bounding box
-            center_image_x = int(rect[0]+(rect[2]/2))
-            center_image_y = int(rect[1]+(rect[3]/2))
+        for color in COLOR_NAMES:
+            print(color)
+            if color + "_cube" in rect_array.keys()  and color + "_cube_holder"  in rect_array.keys():
+                print(color)
+                print("I found "+ color)
+                for element in ["_cube", "_cube_holder"]:
+                # center of pointcloud from edges of bounding box
+                    center_image_x = int(rect_array[color+element][0]+(rect_array[color+element][2]/2))
+                    center_image_y = int(rect_array[color+element][1]+(rect_array[color+element][3]/2))
 
-            # get corresponding depth values from depth map with pixel from RGB
-            depth_1 = depth_array[center_image_y, center_image_x]*0.001
-            depth_2 = depth_array[rect[1], rect[0]]*0.001
+                    # get corresponding depth values from depth map with pixel from RGB
+                    depth_1 = depth_array[center_image_y, center_image_x]*0.001
+                    depth_2 = depth_array[rect_array[color+element][1], rect_array[color+element][0]]*0.001
 
-            # self.camera_model = image_geometry.PinholeCameraModel()
-            # self.camera_model.fromCameraInfo(camera_info)
+                    # self.camera_model = image_geometry.PinholeCameraModel()
+                    # self.camera_model.fromCameraInfo(camera_info)
 
-            center_point = self.convert_pixel_to_point(
-                center_image_x, center_image_y, depth_1, camera_info, _intrinsics)
-            corner_point = self.convert_pixel_to_point(
-                rect[0], rect[1], depth_2, camera_info, _intrinsics)
-            # ray = np.array(self.camera_model.projectPixelTo3dRay((center_image_x,center_image_y)))
+                    center_point = self.convert_pixel_to_point(
+                        center_image_x, center_image_y, depth_1, camera_info, _intrinsics)
+                    corner_point = self.convert_pixel_to_point(
+                        rect_array[color+element][0], rect_array[color+element][1], depth_2, camera_info, _intrinsics)
+                    # ray = np.array(self.camera_model.projectPixelTo3dRay((center_image_x,center_image_y)))
 
-            # ray_z = [el / ray[2] for el in ray]  # normalize the ray so its Z-component equals 1.0
-            # pt = [el * depth_1 for el in ray_z]  # multiply the ray by the depth; its Z-component should now equal the depth value
-            # color_pixel = rs2.rs2_project_point_to_pixel(_intrinsics, (center_point))
-            # print(color_pixel)
+                    # ray_z = [el / ray[2] for el in ray]  # normalize the ray so its Z-component equals 1.0
+                    # pt = [el * depth_1 for el in ray_z]  # multiply the ray by the depth; its Z-component should now equal the depth value
+                    # color_pixel = rs2.rs2_project_point_to_pixel(_intrinsics, (center_point))
+                    # print(color_pixel)
 
-            size_y = (center_point[0]-corner_point[0])*3
-            size_x = (center_point[1]-corner_point[1])*3
+                    size_y = (center_point[0]-corner_point[0])*3
+                    size_x = (center_point[1]-corner_point[1])*3
 
-            # print(size_y, size_x)
-            size = np.array([size_y, size_x, 0.4])
+                    # print(size_y, size_x)
+                    size = np.array([size_y, size_x, 0.4])
 
-            # Define bounding box of object in Poincloud Coordinate system
-            center = np.array(
-                [center_point[0], center_point[1], center_point[2]])
+                    # Define bounding box of object in Poincloud Coordinate system
+                    center = np.array(
+                        [center_point[0], center_point[1], center_point[2]])
 
-            r = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-            bbox = o3d.geometry.OrientedBoundingBox(center, r, size)
+                    r = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+                    bbox = o3d.geometry.OrientedBoundingBox(center, r, size)
 
-            # visualize the bounding box and crop the pointcloud around the bounding box coordinates
-            # o3d.visualization.draw_geometries([self.o3d_pcd, bbox])
-            try:
-                self.o3d_pcd = self.o3d_pcd.crop(bbox)
-            except Exception as e:
-                self.get_logger().error("Exception occurred: {0}".format(e))
+                    # visualize the bounding box and crop the pointcloud around the bounding box coordinates
+                    # o3d.visualization.draw_geometries([self.o3d_pcd, bbox])
+                    try:
+                        self.o3d_pcd = self.o3d_pcd.crop(bbox)
+                    except Exception as e:
+                        self.get_logger().error("Exception occurred: {0}".format(e))
 
-            o3d.io.write_point_cloud("copy_of_fragment.ply", self.o3d_pcd)
+                    o3d.io.write_point_cloud("copy_of_fragment.ply", self.o3d_pcd)
 
-            self.center = center
-            #print(self.center[0], self.center[1])
+                    self.center = center
+                    #print(self.center[0], self.center[1])
 
-            # Pointcloud matching with the cropped bounding box
-            # returns a transformation matrix 4x4 consisting of
-            # the rotation and translation within the cropped area
-            # print(self.o3d_pcd)
+                    # Pointcloud matching with the cropped bounding box
+                    # returns a transformation matrix 4x4 consisting of
+                    # the rotation and translation within the cropped area
+                    # print(self.o3d_pcd)
 
-            # start = time.time()
-            # self.transformation_matrix = reg.register(self.o3d_pcd)
-            # end = time.time()
-            # print(end-start)
-            # print("here")
-            # time.sleep(0.25)
-            # transform the received pose in Point Cloud Coordinate System to
-            # World coordinates and publish it as a color pose message
-            self.transform_pose()
+                    # start = time.time()
+                    # self.transformation_matrix = reg.register(self.o3d_pcd)
+                    # end = time.time()
+                    # print(end-start)
+                    # print("here")
+                    # time.sleep(0.25)
+                    # transform the received pose in Point Cloud Coordinate System to
+                    # World coordinates and publish it as a color pose message
+                    self.transform_pose(color, element)
         #print(self.color_array)
 
         self.publisher_color_pose_array.publish(self.color_array)
@@ -196,7 +215,7 @@ class Color_Pose_Estimation(Node):
         result = rs2.rs2_deproject_pixel_to_point(_intrinsics, [x, y], depth)
         return result
 
-    def transform_pose(self):
+    def transform_pose(self, color, element):
 
         try:
             # Look up the transform from "frame1" to "frame2"
@@ -210,9 +229,6 @@ class Color_Pose_Estimation(Node):
             pose.pose.position.x = self.center[0]-0.015
             pose.pose.position.y = self.center[1]
             pose.pose.position.z = self.center[2]
-            pose.pose.orientation.x = 0.0
-            pose.pose.orientation.y = 0.0
-            pose.pose.orientation.z = 0.0
             pose.pose.orientation.w = 1.0
 
             # Transform the pose to "frame2"
@@ -224,11 +240,9 @@ class Color_Pose_Estimation(Node):
             color_pose.pose.position.x = transformed_pose.pose.position.x
             color_pose.pose.position.y = transformed_pose.pose.position.y
             color_pose.pose.position.z = transformed_pose.pose.position.z
-            color_pose.pose.orientation.x = 0.0
-            color_pose.pose.orientation.y = 0.0
-            color_pose.pose.orientation.z = 0.0
             color_pose.pose.orientation.w = 1.0
-            color_pose.color = 1
+            color_pose.color = color
+            color_pose.element = element
 
             # Publish the transformed pose
             self.publisher_color_pose.publish(color_pose)
@@ -240,7 +254,7 @@ class Color_Pose_Estimation(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    cpe = Color_Pose_Estimation()
+    cpe = ColorPoseEstimation()
     rclpy.spin(cpe)
     cpe.destroy_node()
     rclpy.shutdown()
