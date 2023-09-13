@@ -13,6 +13,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name + '/utils', glob.glob(os.path.join('utils', '*.ply'))),
+        ('share/' + package_name + '/utils', glob.glob(os.path.join('utils', '*.json'))),
         ('share/' + package_name, ['package.xml']),
         ('share/color_pose_estimation/launch',
             glob.glob(os.path.join('launch', '*launch.py'))),
@@ -28,6 +29,8 @@ setup(
         'console_scripts': [
             'color_pose_estimation = color_pose_estimation.color_pose_estimation_scenario:main',
             'color_pose_estimation_unique = color_pose_estimation.color_pose_estimation_unique:main',
+            'color_pose_estimation_multiple = color_pose_estimation.color_pose_estimation_multiple:main',
+
         ],
     },
 )
