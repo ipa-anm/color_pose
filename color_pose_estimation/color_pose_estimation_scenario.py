@@ -134,17 +134,15 @@ class ColorPoseEstimation(Node):
         rect_array, img = cdet_s.detect(self.current_frame)
         image_message = self.br.cv2_to_imgmsg(img, encoding="passthrough")
         self.publisher_color_image.publish(image_message)
-        self.get_logger().info('Publishing a color image ')
+        #self.get_logger().info('Publishing a color image ')
 
         self.color_array = color_pose_msgs.msg.ColorPoseArray()
         self.color_array.header.frame_id = "world"
         # if (rect[2]<10 or rect[3]<10):
         #    return
+    
         for color in COLOR_NAMES:
-            print(color)
             if color + "_cube" in rect_array.keys()  and color + "_cube_holder"  in rect_array.keys():
-                print(color)
-                print("I found "+ color)
                 for element in ["_cube", "_cube_holder"]:
                 # center of pointcloud from edges of bounding box
                     center_image_x = int(rect_array[color+element][0]+(rect_array[color+element][2]/2))
@@ -208,8 +206,11 @@ class ColorPoseEstimation(Node):
                     # World coordinates and publish it as a color pose message
                     self.transform_pose(color, element)
         #print(self.color_array)
-
-        self.publisher_color_pose_array.publish(self.color_array)
+        #self.get_logger().info(self.color_array)
+        if(self.color_array.color_poses!=[]):
+            self.get_logger().info('Publishing a color array ')
+            print(self.color_array.color_poses)
+            self.publisher_color_pose_array.publish(self.color_array)
 
     def convert_pixel_to_point(self, x, y, depth, cameraInfo, _intrinsics):
         result = rs2.rs2_deproject_pixel_to_point(_intrinsics, [x, y], depth)
@@ -224,7 +225,7 @@ class ColorPoseEstimation(Node):
 
             # Create a pose stamped message in "frame1"
             pose = PoseStamped()
-            print("color_pose generated")
+            #print("color_pose generated")
             pose.header.frame_id = "camera_depth_optical_frame"
             pose.pose.position.x = self.center[0]-0.015
             pose.pose.position.y = self.center[1]
@@ -242,11 +243,11 @@ class ColorPoseEstimation(Node):
             color_pose.pose.position.z = transformed_pose.pose.position.z
             color_pose.pose.orientation.w = 1.0
             color_pose.color = color
-            color_pose.element = element
+            color_pose.element = element[1:]
+            self.color_array.color_poses.append(color_pose)
 
             # Publish the transformed pose
             self.publisher_color_pose.publish(color_pose)
-            self.color_array.color_poses.append(color_pose)
 
         except Exception as e:
             self.get_logger().error("Exception occurred: {0}".format(e))
